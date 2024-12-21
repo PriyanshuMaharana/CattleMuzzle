@@ -21,7 +21,7 @@ app = Flask(__name__)
 # Configuration
 class Config:
     FIREBASE_MODEL_NAME = os.getenv('FIREBASE_MODEL_NAME', 'MAIN_MUZZLE')
-    FIREBASE_CREDENTIALS_PATH = 'path/to/your/firebase-credentials.json'
+    FIREBASE_CREDENTIALS_PATH = 'https://raw.githubusercontent.com/PriyanshuMaharana/CattleMuzzle/main/cattle-muzzle-main-firebase-adminsdk-cu36f-b9f9d4bb73.json'
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
     INPUT_SHAPE = (71, 71, 3)
