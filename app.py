@@ -1,13 +1,10 @@
-from flask import Flask, request, jsonify
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras.preprocessing import image
 import os
 import logging
-import firebase_admin
-from firebase_admin import credentials, ml
+from flask import Flask, request, jsonify
 import tempfile
-from werkzeug.utils import secure_filename
 
 # Configure logging
 logging.basicConfig(
@@ -20,41 +17,25 @@ app = Flask(__name__)
 
 # Configuration
 class Config:
-    FIREBASE_MODEL_NAME = os.getenv('FIREBASE_MODEL_NAME', 'MAIN_MUZZLE')
-    FIREBASE_CREDENTIALS_PATH = 'https://raw.githubusercontent.com/PriyanshuMaharana/CattleMuzzle/main/cattle-muzzle-main-firebase-adminsdk-cu36f-b9f9d4bb73.json'
+    MODEL_PATH = "model.tflite"  # Path to the model in the repository
     ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg'}
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB
     INPUT_SHAPE = (71, 71, 3)
 
 app.config.from_object(Config)
 
-class FirebaseMLService:
+class TFLiteModelService:
     def __init__(self):
-        self._init_firebase()
-        self.interpreter = None
+        self.load_model()
         
-    def _init_firebase(self):
-        """Initialize Firebase with credentials"""
-        if not firebase_admin._apps:
-            cred = credentials.Certificate(app.config['FIREBASE_CREDENTIALS_PATH'])
-            firebase_admin.initialize_app(cred)
-            logger.info("Firebase initialized successfully")
-    
     def load_model(self):
-        """Load model from Firebase ML"""
+        """Load TensorFlow Lite model"""
         try:
-            # Get model reference
-            model = ml.get_model(app.config['FIREBASE_MODEL_NAME'])
-            
-            # Create temporary file for model
-            with tempfile.NamedTemporaryFile(suffix='.tflite', delete=False) as tmp_model_file:
-                model_path = tmp_model_file.name
-                
-            # Download model
-            model.download_to_file(model_path)
-            
+            if not os.path.exists(app.config['MODEL_PATH']):
+                raise FileNotFoundError(f"Model file not found at {app.config['MODEL_PATH']}")
+
             # Load the TFLite model
-            self.interpreter = tf.lite.Interpreter(model_path=model_path)
+            self.interpreter = tf.lite.Interpreter(model_path=app.config['MODEL_PATH'])
             self.interpreter.allocate_tensors()
             
             # Get input and output details
@@ -62,14 +43,10 @@ class FirebaseMLService:
             self.output_details = self.interpreter.get_output_details()
             
             logger.info("Model loaded successfully")
-            
-            # Clean up
-            os.unlink(model_path)
-            
         except Exception as e:
             logger.error(f"Error loading model: {str(e)}")
             raise
-    
+
     def preprocess_image(self, img_path):
         """Preprocess image for model input"""
         img = image.load_img(img_path, target_size=app.config['INPUT_SHAPE'][:2])
@@ -83,20 +60,11 @@ class FirebaseMLService:
         self.interpreter.invoke()
         
         # Get the output from the penultimate layer
-        features = self.interpreter.get_tensor(self.output_details[-2]['index'])
+        features = self.interpreter.get_tensor(self.output_details[0]['index'])
         return features.flatten()[:256]
 
-# Initialize Firebase ML service
-firebase_service = FirebaseMLService()
-
-@app.before_first_request
-def initialize_model():
-    """Initialize the model before first request"""
-    try:
-        firebase_service.load_model()
-    except Exception as e:
-        logger.error(f"Failed to initialize model: {str(e)}")
-        raise
+# Initialize the TFLite model service
+tflite_service = TFLiteModelService()
 
 def allowed_file(filename):
     """Check if file extension is allowed"""
@@ -123,8 +91,8 @@ def extract_features():
             file.save(tmp_file.name)
             
             try:
-                img_array = firebase_service.preprocess_image(tmp_file.name)
-                features = firebase_service.extract_features(img_array)
+                img_array = tflite_service.preprocess_image(tmp_file.name)
+                features = tflite_service.extract_features(img_array)
                 
                 return jsonify({
                     'message': 'Features extracted successfully',
