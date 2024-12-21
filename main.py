@@ -9,8 +9,8 @@ import logging
 import tempfile
 from werkzeug.utils import secure_filename
 
-MODEL_URL = "https://firebasestorage.googleapis.com/v0/b/test-75d65.appspot.com/o/cow_muzzle_feature_extractor.h5?alt=media&token=58fe8537-7fe1-45ac-a4e6-b92a3657c7ff"
-MODEL_PATH = "cow_muzzle_feature_extractor.h5"
+MODEL_URL = "https://firebasestorage.googleapis.com/v0/b/cattle-muzzle-main.firebasestorage.app/o/MAIN_MUZZLE.h5?alt=media&token=819d232f-4554-4105-b38a-27b2085d01e0"
+MODEL_PATH = "MAIN_MUZZLE.h5"
 
 # Function to download the model if it doesn't exist locally
 def download_model(url, save_path):
