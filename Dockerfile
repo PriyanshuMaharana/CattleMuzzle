@@ -1,25 +1,19 @@
+# Base image
 FROM python:3.9-slim
 
+# Set working directory
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc \
-    && rm -rf /var/lib/apt/lists/*
-
-# Copy requirements and install dependencies
+# Copy application files
+COPY app.py .
 COPY requirements.txt .
+COPY model.tflite .
+
+# Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY . .
+# Expose the Flask port
+EXPOSE 5000
 
-# Set environment variables
-ENV PORT=8080
-ENV FLASK_ENV=production
-
-# Expose port
-EXPOSE 8080
-
-# Run using gunicorn
-CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "3", "app:app"]
+# Start the application
+CMD ["python", "app.py"]
